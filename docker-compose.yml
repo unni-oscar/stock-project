@@ -4,31 +4,54 @@ services:
   web:
     image: app-name:latest
     build:
-      target: web
       context: .
+      dockerfile: Dockerfile
     env_file:
       - .env
     ports:
       - "8000:80"
     volumes:
       - .:/var/www/html
+      - ./php/php.ini:/usr/local/etc/php/conf.d/custom-php.ini
+      - ./cacert.pem:/usr/local/share/ca-certificates/cacert.pem
+
+
     depends_on:
       - db
-  
+    networks:
+      - stock-project
+
   db:
-    platform: "linux/amd64"
     image: mysql:5.7
-    env_file:
-      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laraveluser
+      MYSQL_PASSWORD: laravelpassword
     ports:
       - "3310:3306"
     volumes:
       - dbdata:/var/lib/mysql
+    networks:
+      - stock-project
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: laraveluser
+      PMA_PASSWORD: laravelpassword
+    depends_on:
+      - db
+    networks:
+      - stock-project
+
+networks:
+  stock-project:
+    driver: bridge
 
 volumes:
   dbdata:

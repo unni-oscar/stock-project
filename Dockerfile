@@ -4,6 +4,10 @@ FROM php:8.2-apache as web
 # Install Additional System Dependencies
 RUN apt-get update && apt-get install -y \
     libzip-dev \
+    ca-certificates \
+    curl \
+    wget \
+    && update-ca-certificates \
     zip
 
 # Clear cache
@@ -35,3 +39,6 @@ RUN composer install
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Ensure the bhavcopies directory exists
+RUN mkdir -p /var/www/html/storage/app/bhavcopies

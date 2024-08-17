@@ -10,6 +10,26 @@ class Bhavcopy extends Model
     use HasFactory;
 
     protected $fillable = [
-        'symbol', 'series', 'open', 'high', 'low', 'close', 'last', 'prev_close', 'tot_trd_qt', 'tot_trd_val', 'timestamp',
+        'symbol_id',
+        'series',
+        'date1',
+        'prev_close',
+        'open_price',
+        'high_price',
+        'low_price',
+        'last_price',
+        'close_price',
+        'avg_price',
+        'ttl_trd_qnty',
+        'turnover_lacs',
+        'no_of_trades',
+        'deliv_qty',
+        'deliv_per',
     ];
+
+    // Define relationship
+    public function symbol()
+    {
+        return $this->belongsTo(Symbol::class);
+    }
 }
