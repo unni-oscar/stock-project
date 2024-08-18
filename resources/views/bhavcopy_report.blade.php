@@ -25,12 +25,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($symbolDetails as $detail)
-                        <tr>
-                            <td>{{ $detail['symbol'] }}</td>
-                            <td>{{ number_format($detail['latest_deliv_per'], 2) }}</td>
-                            <td>{{ number_format($detail['three_day_avg'], 2) }}</td>
-                          
+                    @foreach ($symbolDetails as $details)
+                    @php
+                        $highlight = false;
+
+                        // Conditions to highlight the row
+                        if (
+                            $details['latest_deliv_per'] > $details['three_day_avg'] &&
+                            $details['three_day_avg'] >= $details['five_day_avg'] &&
+                            $details['five_day_avg'] >= $details['thirty_day_avg']
+                        ) {
+                            $highlight = true;
+                        }
+                    @endphp
+
+                        <tr style="{{ $highlight ? 'background-color: #d4edda;' : '' }}">
+                            <td>{{ $details['symbol'] }}</td>
+                            <td>{{ number_format($details['latest_deliv_per'], 2) }}</td>
+                            <td>{{ number_format($details['three_day_avg'], 2) }}</td>
+                            <td>{{ number_format($details['five_day_avg'], 2) }}</td>
+                            <td>{{ number_format($details['thirty_day_avg'], 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

@@ -95,9 +95,8 @@ class BhavcopyController extends Controller
 
     public function showReport()
     {
-          // Get all symbols
-        // $symbols = Symbol::all();
-        $symbols = Symbol::where('symbol', '20MICRONS')->get();
+         // Get all symbols
+        $symbols = Symbol::all();
 
         $symbolDetails = $symbols->map(function ($symbol) {
             
@@ -107,38 +106,36 @@ class BhavcopyController extends Controller
                 ->orderBy('date1', 'desc')
                  ->first(); // Correct method to get the record
                 
-                      if ($latestRecord) {
+            if ($latestRecord) {
                 $latestDate = Carbon::parse($latestRecord->date1);
 
                 // Get deliv_per data
                 $delivPerData = Bhavcopy::where('symbol_id', $symbol->id)
                     ->where('series', 'EQ')
-                    ->whereDate('date1', '<=', $latestDate)
+                    ->where('date1', '<=', $latestDate)
                     ->orderBy('date1', 'desc')
                     ->get(['deliv_per', 'date1']);
 
-                Log::info('Fetched deliv_per data:', $delivPerData->toArray());
-
                     
                 // Calculate averages
-                $threeDayAvg = $this->calculateAverage($delivPerData, 4);
-                // $fiveDayAvg = $this->calculateAverage($delivPerData, 5);
-                // $thirtyDayAvg = $this->calculateAverage($delivPerData, 30);
+                $threeDayAvg = $this->calculateAverage($delivPerData, 3, $latestRecord->date1);
+                $fiveDayAvg = $this->calculateAverage($delivPerData, 5, $latestRecord->date1);
+                $thirtyDayAvg = $this->calculateAverage($delivPerData, 30, $latestRecord->date1);
 
                 return [
                     'symbol' => $symbol->symbol,
                     'latest_deliv_per' => $latestRecord->deliv_per,
                     'three_day_avg' => $threeDayAvg,
-                    // 'five_day_avg' => $fiveDayAvg,
-                    // 'thirty_day_avg' => $thirtyDayAvg,
+                    'five_day_avg' => $fiveDayAvg,
+                    'thirty_day_avg' => $thirtyDayAvg,
                 ];
             } else {
                 return [
                     'symbol' => $symbol->symbol,
                     'latest_deliv_per' => null,
                     'three_day_avg' => null,
-                    // 'five_day_avg' => null,
-                    // 'thirty_day_avg' => null,
+                    'five_day_avg' => null,
+                    'thirty_day_avg' => null,
                 ];
             }
         });
@@ -150,61 +147,27 @@ class BhavcopyController extends Controller
         return view('bhavcopy_report', compact('symbolDetails'));
     }
 
-    private function calculateAverage($records, $days)
-    {
-
-        // $dateCutoff = Carbon::now()->subDays($days);
-        // $filteredRecords = $records->filter(function ($record) use ($dateCutoff) {
-        //     return Carbon::parse($record->date1)->gte($dateCutoff);
-        // });
-        // if ($filteredRecords->isEmpty()) {
-        //     return null;
-        // }
-
-        // $total = $filteredRecords->sum('deliv_per');
-      
-        // return $total / $filteredRecords->count();
-
-        // Log initial state
-        Log::info('Calculating average with days:', ['days' => $days]);
-
-        // Get the date cutoff as the start of the day
-        $dateCutoff = Carbon::now()->subDays($days)->startOfDay();
-        Log::info('Date Cutoff:', ['dateCutoff' => $dateCutoff]);
-
-        // Filter records
+    private function calculateAverage($records, $days, $latestDate)
+    {   
+        $dateCutoff = $latestDate ;//Carbon::now()->subDays($days);
+        
         $filteredRecords = $records->filter(function ($record) use ($dateCutoff) {
-            // Ensure date1 is parsed correctly
-            $recordDate = Carbon::parse($record->date1)->startOfDay();
-            Log::info('Record Date:', ['date' => $recordDate->format('Y-m-d H:i:s')]);
-Log::info('Date Cutoff:', ['dateCutoff' => $dateCutoff->format('Y-m-d H:i:s')]);
+            $frecordDate = Carbon::createFromFormat('Y-m-d', $record->date1)->startOfDay();
+            $fcutoffDate = Carbon::createFromFormat('Y-m-d', $dateCutoff)->startOfDay();
+            return Carbon::parse($fcutoffDate)->gte($frecordDate);
 
-
-            Log::info('Filtering record:', ['date' => $recordDate, 'cutoff' => $dateCutoff]);
-            // Log each record being checked
-        Log::info('Filtering record:', [
-            'date' => $recordDate,
-            'cutoff' => $dateCutoff,
-            'result' => $recordDate->gte($dateCutoff)
-        ]);
-            return $recordDate->gte($dateCutoff);
         });
 
-        Log::info('Filtered records:', $filteredRecords->toArray());
-
         if ($filteredRecords->isEmpty()) {
-            Log::info('No records to calculate average.');
             return null;
         }
 
-        // $total = $filteredRecords->sum('deliv_per');
-        $total = $filteredRecords->sum(function($record) {
-            return (float)$record->deliv_per;
-        });
+        $total = $filteredRecords->sum('deliv_per');
         $count = $filteredRecords->count();
-        Log::info('Total deliv_per:', ['total' => $total, 'count' => $count]);
 
-        return $total / $count;
+        $average = $count < $days ? $total / $count : $total / $days;
+        return $average;
+
     }
 
     public function fetchBhavcopy()
