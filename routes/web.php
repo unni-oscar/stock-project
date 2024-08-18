@@ -21,3 +21,4 @@ Route::get('/', function () {
 
 
 Route::get('/fetch-bhavcopy', [BhavcopyController::class, 'fetchBhavcopy']);
+Route::get('/bhavcopy-report', [BhavcopyController::class, 'showReport'])->name('bhavcopy.report');

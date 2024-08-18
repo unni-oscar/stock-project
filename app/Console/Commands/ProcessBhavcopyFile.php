@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use App\Models\Bhavcopy;
 use App\Models\Symbol;
+use App\Services\BhavcopyService;
 use Carbon\Carbon;
 use League\Csv\Reader;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +23,7 @@ class ProcessBhavcopyFile extends Command
      * @var string
      */
     // protected $signature = 'command:name';
-    protected $signature = 'bhavcopy:process';
+    protected $signature = 'bhavcopy:process {param?}' ;
 
     /**
      * The console command description.
@@ -33,14 +34,17 @@ class ProcessBhavcopyFile extends Command
     protected $description = 'Download and process the bhavcopy file daily';
 
 
+
+    protected $bhavcopyService;
     /**
      * Create a new command instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(BhavcopyService $bhavcopyService)
     {
         parent::__construct();
+        $this->bhavcopyService = $bhavcopyService;
     }
 
 
@@ -88,11 +92,16 @@ class ProcessBhavcopyFile extends Command
      */
     public function handle()
     {
-        $url = 'https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_16082024.csv';
-        $localPath = 'storage/app/bhavcopies/sec_bhavdata_full_16082024.csv';
+        $param = $this->argument('param');
+        $res = $this->bhavcopyService->fetchNseData($param);
+        $this->info($res);
+        
+        
+        // $url = 'https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_16082024.csv';
+        // $localPath = 'storage/app/bhavcopies/sec_bhavdata_full_16082024.csv';
 
-        // Call the function to download the file
-        $this->downloadFile($url, $localPath);
+        // // Call the function to download the file
+        // $this->downloadFile($url, $localPath);
         // $client = new Client();
 
         // try {

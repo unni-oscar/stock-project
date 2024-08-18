@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Services\CurlService;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,9 +13,14 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function register()
+    // This function registers the CurlService class as a singleton in the app container
+   public function register()
     {
-        //
+        // Register the CurlService class as a singleton in the app container
+        $this->app->singleton(CurlService::class, function ($app) {
+            // Return a new instance of the CurlService class
+            return new CurlService();
+        });
     }
 
     /**
