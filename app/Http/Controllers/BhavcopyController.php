@@ -98,20 +98,35 @@ class BhavcopyController extends Controller
          // Get all symbols
         $symbols = Symbol::all();
         // $symbols = Symbol::take(2)->get();
+        // $symbols = Symbol::skip(1)->take(1)->get();
         $latestDate = Bhavcopy::max('date1');
         $latestDate = Carbon::parse($latestDate);
         $dataAsOn = $latestDate->format('d-m-Y');
+        
+        $selectedDate = $request->input('date');
+        if($selectedDate) {
 
-	$selectedDate = $request->input('date');
-
-        $symbolDetails = $symbols->map(function ($symbol) {
-            
-            
-            $latestRecord = Bhavcopy::where('symbol_id', $symbol->id)
-                ->where('series', 'EQ')
-                ->orderBy('date1', 'desc')
-                 ->first(); // Correct method to get the record
+            $formattedSelectedDate = $selectedDate ? Carbon::parse($selectedDate) : null;
+            $formattedSelectedDate = $formattedSelectedDate->format('Y-m-d');
+            $dataAsOn = $selectedDate;            
+        }
+        
+        $symbolDetails = $symbols->map(function ($symbol)  use ($formattedSelectedDate) {            
+             $query = Bhavcopy::where('symbol_id', $symbol->id)
+                ->where('series', 'EQ');
                 
+            if ($formattedSelectedDate) {
+                
+                $formattedSelectedDate = Carbon::parse($formattedSelectedDate); // Parse the date string to a Carbon instance                
+                $query->where('date1', '<=', $formattedSelectedDate);
+            }
+            $latestRecord = $query->orderBy('date1', 'desc')->first();
+            // $latestRecord = Bhavcopy::where('symbol_id', $symbol->id)
+            //     ->where('series', 'EQ')
+            //     ->orderBy('date1', 'desc')
+            //      ->first(); // Correct method to get the record
+                
+               
             if ($latestRecord) {
                 $latestDate = Carbon::parse($latestRecord->date1);
 
@@ -202,7 +217,7 @@ class BhavcopyController extends Controller
 
     public function fetchBhavcopy()
     {
-        $isFileDownloaded  = $this->bhavcopyService->fetchNSEData('22082024');
+        $isFileDownloaded  = $this->bhavcopyService->fetchNSEData('31082024');
 
         //error 10082024  03082024  17082024
         // dd($isFileDownloaded);
