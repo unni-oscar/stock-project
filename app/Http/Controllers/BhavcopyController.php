@@ -93,10 +93,16 @@ class BhavcopyController extends Controller
         Log::info("File downloaded successfully: $localPath");
     }
 
-    public function showReport()
+    public function showReport(Request $request)
     {
          // Get all symbols
         $symbols = Symbol::all();
+        // $symbols = Symbol::take(2)->get();
+        $latestDate = Bhavcopy::max('date1');
+        $latestDate = Carbon::parse($latestDate);
+        $dataAsOn = $latestDate->format('d-m-Y');
+
+	$selectedDate = $request->input('date');
 
         $symbolDetails = $symbols->map(function ($symbol) {
             
@@ -114,20 +120,38 @@ class BhavcopyController extends Controller
                     ->where('series', 'EQ')
                     ->where('date1', '<=', $latestDate)
                     ->orderBy('date1', 'desc')
-                    ->get(['deliv_per', 'date1']);
+                    ->get(['deliv_per', 'date1', 'close_price', 'prev_close', 'turnover_lacs']);
 
-                    
+                $firstRecord = $delivPerData->first();
+
                 // Calculate averages
                 $threeDayAvg = $this->calculateAverage($delivPerData, 3, $latestRecord->date1);
                 $fiveDayAvg = $this->calculateAverage($delivPerData, 5, $latestRecord->date1);
                 $thirtyDayAvg = $this->calculateAverage($delivPerData, 30, $latestRecord->date1);
 
+
+                // Calculate highest price move
+                $priceMoves = ($firstRecord->close_price - $firstRecord->prev_close) / $firstRecord->prev_close * 100;
+
+                // $priceMoves = $delivPerData->map(function ($record) {
+                //     return ($record->close_price - $record->prev_close) / $record->prev_close * 100;
+                // });
+                // dd($priceMoves);
+                // $highestPriceMove = $priceMoves->max();
+                $highestPriceMove = $priceMoves;
+                $turnoverLacs = $firstRecord->turnover_lacs;
+
+                // Sum of turnover in lacs
+                // $turnoverLacs = $delivPerData->sum('turnover_lacs');
+
                 return [
                     'symbol' => $symbol->symbol,
                     'latest_deliv_per' => $latestRecord->deliv_per,
                     'three_day_avg' => $threeDayAvg,
-                    'five_day_avg' => $fiveDayAvg,
+                    'five_day_avg' =>  $fiveDayAvg,
                     'thirty_day_avg' => $thirtyDayAvg,
+                    'highest_price_move' => $highestPriceMove,
+                    'turnover_lacs' => $turnoverLacs,
                 ];
             } else {
                 return [
@@ -136,34 +160,40 @@ class BhavcopyController extends Controller
                     'three_day_avg' => null,
                     'five_day_avg' => null,
                     'thirty_day_avg' => null,
+                    'highest_price_move' => null,
+                    'turnover_lacs' => null,
                 ];
             }
         });
-      
-        // Sort by latest_deliv_per in descending order
-        $symbolDetails = $symbolDetails->sortByDesc('latest_deliv_per');
+        // dd($symbolDetails);
+        // Sort by selected criteria, defaulting to 'latest_deliv_per'
+        $sortBy = $request->input('sort_by', 'latest_deliv_per');
+        $symbolDetails = $symbolDetails->sortByDesc($sortBy);
 
         // return view('symbol_details', compact('symbolDetails'));
-        return view('bhavcopy_report', compact('symbolDetails'));
+        return view('bhavcopy_report', compact('symbolDetails','dataAsOn', 'selectedDate'));
     }
 
     private function calculateAverage($records, $days, $latestDate)
     {   
+    // echo "<pre>";
         $dateCutoff = $latestDate ;//Carbon::now()->subDays($days);
-        
+      
         $filteredRecords = $records->filter(function ($record) use ($dateCutoff) {
             $frecordDate = Carbon::createFromFormat('Y-m-d', $record->date1)->startOfDay();
             $fcutoffDate = Carbon::createFromFormat('Y-m-d', $dateCutoff)->startOfDay();
             return Carbon::parse($fcutoffDate)->gte($frecordDate);
 
         });
+        $recordsToAverage = $filteredRecords->take($days);
 
-        if ($filteredRecords->isEmpty()) {
+        if ($recordsToAverage->isEmpty()) {
             return null;
         }
 
-        $total = $filteredRecords->sum('deliv_per');
-        $count = $filteredRecords->count();
+// print_r( $recordsToAverage->toArray());
+        $total = $recordsToAverage->sum('deliv_per');
+        $count = $recordsToAverage->count();
 
         $average = $count < $days ? $total / $count : $total / $days;
         return $average;
@@ -172,7 +202,7 @@ class BhavcopyController extends Controller
 
     public function fetchBhavcopy()
     {
-        $isFileDownloaded  = $this->bhavcopyService->fetchNSEData('12082024');
+        $isFileDownloaded  = $this->bhavcopyService->fetchNSEData('22082024');
 
         //error 10082024  03082024  17082024
         // dd($isFileDownloaded);
