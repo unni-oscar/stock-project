@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Laravel Vue Example</title>
+    <title>About Us</title>
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
 </head>
 <body>
     <div id="app">
-        <example-component></example-component>
+        <about-us></about-us>
     </div>
     <script src="{{ mix('js/app.js') }}"></script>
 </body>
