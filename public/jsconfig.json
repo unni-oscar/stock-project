@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "target": "es6",
+      "module": "commonjs",
+      "allowJs": true,
+      "checkJs": true,
+      "jsx": "preserve",
+      "moduleResolution": "node"
+    },
+    "include": ["src/**/*.js", "src/**/*.vue"],
+    "exclude": ["node_modules"]
+  }
+  

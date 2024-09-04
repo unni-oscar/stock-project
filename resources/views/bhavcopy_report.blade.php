@@ -87,10 +87,8 @@
         $("#datepicker").datepicker({
             dateFormat: "dd-mm-yy", // Set the date format
             defaultDate: "{{ old('date', $selectedDate) }}",
-            onSelect: function(dateText, inst) {
-                // Automatically submit the form when a date is selected
-                this.form.submit()
-                // $('#dateForm').submit();
+            onSelect: function(dateText, inst) {               
+                this.form.submit()               
             }
         });
     });

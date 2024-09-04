@@ -92,23 +92,152 @@ class BhavcopyController extends Controller
 
         Log::info("File downloaded successfully: $localPath");
     }
+    public function generate()
+    {
+        $data = [];
+        for ($i = 0; $i < 10; $i++) {
+            $data[] = rand(100, 1000);
+        }
 
+      
+        return inertia('DummyDataTable', [
+            'data' => $data,
+            
+        ]);
+    }
+
+    public function test(Request $request)
+    {
+        $symbols = Symbol::take(2)->get();
+        $latestDate = Bhavcopy::max('date1');
+        $latestDate = Carbon::parse($latestDate);
+        $dataAsOn = $latestDate->format('d-m-Y');
+        $symbolDetails = $symbols->map(function ($symbol)   {            
+        //     $query = Bhavcopy::where('symbol_id', $symbol->id)
+        //        ->where('series', 'EQ');
+                 
+        //    if ($formattedSelectedDate) {
+               
+        //        $formattedSelectedDate = Carbon::parse($formattedSelectedDate); // Parse the date string to a Carbon instance                
+        //        $query->where('date1', '<=', $formattedSelectedDate);
+        //    }
+        //    $latestRecord = $query->orderBy('date1', 'desc')->first();
+           $latestRecord = Bhavcopy::where('symbol_id', $symbol->id)
+               ->where('series', 'EQ')
+               ->orderBy('date1', 'desc')
+                ->first(); // Correct method to get the record
+               
+              
+           if ($latestRecord) {
+               $latestDate = Carbon::parse($latestRecord->date1);
+
+               // Get deliv_per data
+               $delivPerData = Bhavcopy::where('symbol_id', $symbol->id)
+                   ->where('series', 'EQ')
+                   ->where('date1', '<=', $latestDate)
+                   ->orderBy('date1', 'desc')
+                   ->get(['deliv_per', 'date1', 'close_price', 'prev_close', 'turnover_lacs']);
+
+               $firstRecord = $delivPerData->first();
+
+               // Calculate averages
+               $threeDayAvg = $this->calculateAverage($delivPerData, 3, $latestRecord->date1);
+               $fiveDayAvg = $this->calculateAverage($delivPerData, 5, $latestRecord->date1);
+               $thirtyDayAvg = $this->calculateAverage($delivPerData, 30, $latestRecord->date1);
+
+
+               // Calculate highest price move
+               $priceMoves = ($firstRecord->close_price - $firstRecord->prev_close) / $firstRecord->prev_close * 100;
+
+               // $priceMoves = $delivPerData->map(function ($record) {
+               //     return ($record->close_price - $record->prev_close) / $record->prev_close * 100;
+               // });
+               // dd($priceMoves);
+               // $highestPriceMove = $priceMoves->max();
+               $highestPriceMove = $priceMoves;
+               $turnoverLacs = $firstRecord->turnover_lacs;
+
+               // Sum of turnover in lacs
+               // $turnoverLacs = $delivPerData->sum('turnover_lacs');
+
+               return [
+                   'symbol' => $symbol->symbol,
+                   'latest_deliv_per' => $latestRecord->deliv_per,
+                   'three_day_avg' => $threeDayAvg,
+                   'five_day_avg' =>  $fiveDayAvg,
+                   'thirty_day_avg' => $thirtyDayAvg,
+                   'highest_price_move' => $highestPriceMove,
+                   'turnover_lacs' => $turnoverLacs,
+               ];
+           } else {
+               return [
+                   'symbol' => $symbol->symbol,
+                   'latest_deliv_per' => null,
+                   'three_day_avg' => null,
+                   'five_day_avg' => null,
+                   'thirty_day_avg' => null,
+                   'highest_price_move' => null,
+                   'turnover_lacs' => null,
+               ];
+           }
+       });
+       $datas = [];
+       for ($i = 0; $i < 10; $i++) {
+           $data[] = rand(100, 1000);
+       }
+
+     
+    //    return inertia('DummyDataTable', [
+    //        'data' => $data,
+           
+    //    ]);
+       // dd($symbolDetails);
+       // Sort by selected criteria, defaulting to 'latest_deliv_per'
+       $sortBy = $request->input('sort_by', 'latest_deliv_per');
+       $symbolDetails = $symbolDetails->sortByDesc($sortBy);
+       $content = 'This is some content returned from the controller. by Unni';
+       // dd($symbolDetails);
+        // return inertia('StockReport', [
+        //     // 'symbolDetails' => $symbolDetails,
+        //  //    'dataAsOn' => $dataAsOn , // now()->format('d-m-Y'),
+        //  //    'selectedDate' => $selectedDate,
+        //     'sortBy' => $sortBy,
+        //         'content' => $content
+        // ]);  
+        Log::info(gettype($symbolDetails));
+                // dd($symbolDetails);
+        $content = 'This is some content returned from the controller. by Unnisds';
+Log::error($datas);
+        return inertia('ContentPage', [
+            'content' => $content,
+            'dataAsOn' => $dataAsOn,
+            'symbolDetails' => $symbolDetails,
+            'datas' =>  $datas
+        ]);
+    }
     public function showReport(Request $request)
     {
+       
          // Get all symbols
-        $symbols = Symbol::all();
-        // $symbols = Symbol::take(2)->get();
+        // $symbols = Symbol::all();
+        $symbols = Symbol::take(10)->get();
         // $symbols = Symbol::skip(1)->take(1)->get();
         $latestDate = Bhavcopy::max('date1');
         $latestDate = Carbon::parse($latestDate);
         $dataAsOn = $latestDate->format('d-m-Y');
         
-        $selectedDate = $request->input('date');
+        $selectedDate = $request->get('date', now()->format('d-m-Y'));
+        $selectedDate = Carbon::parse($selectedDate);
+        $selectedDate = $selectedDate->format('d-m-Y');
+        
+     
+        // $selectedDate = $request->input('date');
         if($selectedDate) {
 
             $formattedSelectedDate = $selectedDate ? Carbon::parse($selectedDate) : null;
             $formattedSelectedDate = $formattedSelectedDate->format('Y-m-d');
-            $dataAsOn = $selectedDate;            
+
+            $dataAsOn = ($selectedDate > $dataAsOn) ? $dataAsOn : $selectedDate;            
         }
         
         $symbolDetails = $symbols->map(function ($symbol)  use ($formattedSelectedDate) {            
@@ -116,7 +245,6 @@ class BhavcopyController extends Controller
                 ->where('series', 'EQ');
                 
             if ($formattedSelectedDate) {
-                
                 $formattedSelectedDate = Carbon::parse($formattedSelectedDate); // Parse the date string to a Carbon instance                
                 $query->where('date1', '<=', $formattedSelectedDate);
             }
@@ -180,13 +308,24 @@ class BhavcopyController extends Controller
                 ];
             }
         });
-        // dd($symbolDetails);
-        // Sort by selected criteria, defaulting to 'latest_deliv_per'
-        $sortBy = $request->input('sort_by', 'latest_deliv_per');
-        $symbolDetails = $symbolDetails->sortByDesc($sortBy);
+        $sortBy = $request->get('sort_by', 'latest_deliv_per');
+        $symbolDetails = $symbolDetails->sortByDesc($sortBy)->values();
+        Log::info("Symbol Details: $symbolDetails");
+        // $dataAsOn = now()->format('d-m-Y');
+        // $selectedDate = $formattedSelectedDate;
+       
+        // dd
+    
+        
+        return Inertia('DeliveryReport', [
+            'symbolDetails' => $symbolDetails,
+            'dataAsOn' => $dataAsOn , // now()->format('d-m-Y'),
+            'selectedDate' => $selectedDate,
+            'sortBy' => $sortBy
+        ]);
 
         // return view('symbol_details', compact('symbolDetails'));
-        return view('bhavcopy_report', compact('symbolDetails','dataAsOn', 'selectedDate'));
+        // return view('bhavcopy_report', compact('symbolDetails','dataAsOn', 'selectedDate'));
     }
 
     private function calculateAverage($records, $days, $latestDate)

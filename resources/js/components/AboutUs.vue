@@ -2,7 +2,8 @@
 <template>
   <div>
     <h1>About Us</h1>
-    <p>Welcome to the About Us page!</p>
+     <h2>About Us</h2>
+    <p>Welcome to the About {name } Us page!</p>
     <!-- Add more content here as needed -->
   </div>
 </template>
